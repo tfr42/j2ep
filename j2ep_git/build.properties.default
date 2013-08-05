@@ -1,0 +1,21 @@
+#The version
+app.version=custom
+
+# Tomcat specifics
+catalina.home= installation dir for tomcat
+manager.username= username that can use the manager
+manager.password= password for user above
+
+#Directory having the libs that will be copied to build
+#Change this to something that suits you and run the 
+#download task before running anything else.
+external.libs=${catalina.home}/webapps/j2ep/lib/
+
+#Here are the libs downloaded from
+download.libs=http://j2ep.sourceforge.net/lib
+
+#server
+server.url = http://localhost:8080
+
+
+

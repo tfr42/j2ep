@@ -1,0 +1,425 @@
+<project name="j2ep" default="compile" basedir=".">
+
+    <!--
+
+    The property file has to include to following properties.
+
+    *   app.version - The version we are currently building.
+
+    *   external.libs - Location for commons-beanutils, commons-codec
+        commons-digester and commons-httpclient.
+
+    *   server.url - Url to the server, standard is http://localhost:8080.
+
+    You can also add params needed for the start of your container.
+    This build file can deploy to Tomcat and therefor the following
+    properties are added to build.properties.
+
+    *   catalina.home - Tomcat location.
+
+    *   manager.username - User name for the manager role.
+
+    *   manager.password - Password for the manager role.
+
+    -->
+    <property file="build.properties"/>
+    <property file="build.properties.default"/>
+
+
+    <!--
+
+    Here are some properties used when building.
+
+    -->
+    <property name="app.name"               value="j2ep"/>
+    <property name="build.home"             value="${basedir}/WEB-INF/classes"/>
+    <property name="app.home"               value="${basedir}/WEB-INF"/>
+    <property name="lib.home"               value="${basedir}/WEB-INF/lib"/>
+    <property name="dist.home"              value="${basedir}/dist"/>
+    <property name="docs.home"              value="${basedir}/docs"/>
+    <property name="src.home"               value="${basedir}/src"/>
+    <property name="test.relativehome"      value="/net/sf/j2ep/test"/>
+    <property name="test.path"              value="net.sf.j2ep.test"/>
+    <property name="reports.test"           value="${basedir}/testreports"/>
+    <property name="manager.url"            value="${server.url}/manager"/>
+
+    <property name="compile.debug"          value="true"/>
+    <property name="compile.deprecation"    value="false"/>
+    <property name="compile.optimize"       value="true"/>
+
+
+    <!--
+
+    Dynamical construction of the classpath for ant.
+
+    -->
+    <path id="compile.classpath">
+
+        <!-- Include all the external libs -->
+        <fileset dir="${external.libs}">
+            <include name="*.jar" />
+        </fileset>
+
+        <!-- Base path included for the tests to relate to -->
+        <pathelement location="${build.home}"/>
+
+    </path>
+
+
+    <!--
+
+    Deletes all previous builds to clean up the filesystem.
+
+    -->
+    <target name="clean" description="Delete old build and dist directories">
+        <delete dir="${build.home}" />
+        <delete dir="${lib.home}" />
+        <delete dir="${dist.home}" />
+        <delete dir="${docs.home}/api" />
+    </target>
+
+
+    <!--
+
+    Compiles the source files to /WEB-INF/classes.
+
+    -->
+    <target name="compile" depends="prepare" description="Compile Java sources">
+
+        <!-- Compile Java classes -->
+        <mkdir dir="${build.home}" />
+        <javac source="1.4" target="1.4" srcdir="${src.home}" destdir="${build.home}" debug="${compile.debug}" deprecation="${compile.deprecation}" optimize="${compile.optimize}">
+            <classpath refid="compile.classpath" />
+        </javac>
+
+        <!-- Copy application resources -->
+        <copy todir="${build.home}">
+            <fileset dir="${src.home}" excludes="**/*.java,**/*.class" />
+        </copy>
+
+    </target>
+
+
+    <!--
+
+    Will run the test cases for both junit and cactus.
+
+    -->
+    <target name="test" depends="cactusrelease,redeploy.cactuswar,deploy.cactuswar" description="Run all junit and cactus tests">
+
+        <!-- JUnit -->
+        <junit printsummary="yes" haltonfailure="yes">
+            <classpath refid="compile.classpath" />
+            <formatter type="plain" />
+
+            <test name="net.sf.j2ep.test.AllowHeaderTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.CompositeRuleTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.DirectoryRuleTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.IPRuleTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.RewriteRuleTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.TimeRuleTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.StatusCheckerTest" todir="${reports.test}" />
+        </junit>
+
+        <!-- Cactus -->
+        <cactus warfile="${dist.home}/${app.name}-${app.version}-CACTUS.war" printsummary="yes">
+            <classpath refid="compile.classpath" />
+            <formatter type="plain" />
+
+            <test name="net.sf.j2ep.test.OptionTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.GetTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.PostTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.DirectoryMappingTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.ClusterTest" todir="${reports.test}" />
+            <test name="net.sf.j2ep.test.TraceTest" todir="${reports.test}" />
+        	<test name="net.sf.j2ep.test.CycleTest" todir="${reports.test}" />
+        </cactus>
+
+    </target>
+
+
+    <!--
+
+    Makes a WAR file containing the test classes which are normally
+    not included in the WAR. Then the war i cactifyed so that the
+    tests can be run.
+
+    -->
+    <target name="cactusrelease" depends="compile" description="Create war for cactus test">
+
+        <!-- Create temporary dist directory -->
+        <mkdir dir="${dist.home}/tmp/WEB-INF" />
+        <copy todir="${dist.home}/tmp/WEB-INF">
+            <fileset dir="${app.home}" />
+        </copy>
+
+        <!-- We only want the web.xml that cactus is making for us -->
+        <move tofile="${dist.home}/tmp/WEB-INF/web.xml" overwrite="true" file="${dist.home}/tmp/WEB-INF/cactus-web.xml" />
+
+        <!-- Create application JAR file and cactify -->
+        <jar jarfile="${dist.home}/test.war" basedir="${dist.home}/tmp" />
+        <cactifywar srcfile="${dist.home}/test.war" destfile="${dist.home}/${app.name}-${app.version}-CACTUS.war" />
+
+        <!-- Remove tempdir -->
+        <delete dir="${dist.home}/tmp" />
+
+        <!-- Remove temporary war -->
+        <delete file="${dist.home}/test.war" />
+
+        <!-- Check if we have deployed a test relase already. We want to know if we should undeploy. -->
+        <waitfor maxwait="1000" checkevery="450" timeoutproperty="notdeployed">
+            <http url="${server.url}/test/ServletRedirector?Cactus_Service=RUN_TEST" />
+        </waitfor>
+
+    </target>
+
+    <!--
+
+    Make a jar of the class files for simple embedding.
+
+    -->
+    <target name="jar" depends="compile" description="Make a jar of the class files for simple embedding.">
+        <mkdir dir="${dist.home}" />
+        <jar jarfile="${dist.home}/${app.name}-${app.version}.jar">
+            <fileset dir="${build.home}"  includes='**/*.class' excludes='**/test/*'/>
+        </jar>
+    </target>
+
+    <!--
+
+    Makes a release ready WAR file ready to deploy.
+
+    -->
+    <target name="release" depends="jar" description="Create binary distribution">
+
+        <!-- Create temporary dist directory -->
+        <mkdir dir="${dist.home}/tmp/WEB-INF" />
+        <copy todir="${dist.home}/tmp/WEB-INF">
+            <fileset dir="${app.home}" />
+        </copy>
+        <copy todir="${dist.home}/tmp/WEB-INF/lib" file="${dist.home}/${app.name}-${app.version}.jar"/>
+
+        <!-- Remove tests and classes from war -->
+        <delete includeemptydirs="true">
+          <fileset dir="${dist.home}/tmp/WEB-INF/classes" includes="**/*"/>
+        </delete>
+        <delete file="${dist.home}/tmp/WEB-INF/cactus-web.xml" />
+
+        <!-- Create application JAR file -->
+        <jar jarfile="${dist.home}/${app.name}-${app.version}.war" basedir="${dist.home}/tmp" />
+
+        <!-- Remove tempdir -->
+        <delete dir="${dist.home}/tmp" />
+
+    </target>
+
+
+    <!--
+
+        Creates two bzip and zip archive.
+        One as a release containing documentation, etc.
+        The other as a source relase including javadoc.
+
+    -->
+    <target name="distribute" depends="release,javadoc" description="Make everything ready to be uploaded to file server">
+
+        <tar destfile="${dist.home}/src.tar">
+            <tarfileset dir="${docs.home}" fullpath="/README">
+                <include name="readme-src.txt" />
+            </tarfileset>
+            <tarfileset dir="${docs.home}" fullpath="/LICENSE">
+                <include name="license.txt" />
+            </tarfileset>
+
+            <tarfileset dir="${docs.home}" prefix="/docs">
+                <exclude name="*.txt" />
+            </tarfileset>
+
+            <tarfileset dir="${src.home}" prefix="/src">
+                <include name="**/*.java"/>
+                <include name="**/*.xml"/>
+            </tarfileset>
+
+            <tarfileset dir="${basedir}" >
+                <include name="build.xml" />
+                <include name="build.properties.default" />
+            </tarfileset>
+        </tar>
+        <bzip2 src="${dist.home}/src.tar" destfile="${dist.home}/${app.name}-${app.version}-src.tar.bz2"/>
+
+        <zip destfile="${dist.home}/${app.name}-${app.version}-src.zip">
+            <zipfileset dir="${docs.home}" fullpath="README.txt">
+                <include name="readme-src.txt" />
+            </zipfileset>
+            <zipfileset dir="${docs.home}" fullpath="LICENSE">
+                <include name="license.txt" />
+            </zipfileset>
+
+            <zipfileset dir="${docs.home}" prefix="docs">
+                <exclude name="*.txt" />
+            </zipfileset>
+
+            <zipfileset dir="${src.home}" prefix="src">
+                <include name="**/*.java" />
+                <include name="**/*.xml" />
+            </zipfileset>
+
+            <zipfileset dir="${basedir}">
+                <include name="build.xml" />
+                <include name="build.properties.default" />
+            </zipfileset>
+        </zip>
+
+        <tar destfile="${dist.home}/release.tar">
+            <tarfileset dir="${docs.home}" fullpath="/README">
+                <include name="readme.txt" />
+            </tarfileset>
+            <tarfileset dir="${docs.home}" fullpath="/LICENSE">
+                <include name="license.txt" />
+            </tarfileset>
+
+            <tarfileset dir="${docs.home}" prefix="/docs">
+                <exclude name="*.txt" />
+                <exclude name="**/api/" />
+            </tarfileset>
+
+            <tarfileset dir="${dist.home}">
+                <include name="${app.name}-${app.version}.war" />
+            </tarfileset>
+        </tar>
+        <bzip2 src="${dist.home}/release.tar" destfile="${dist.home}/${app.name}-${app.version}.tar.bz2" />
+
+        <zip destfile="${dist.home}/${app.name}-${app.version}.zip">
+            <zipfileset dir="${docs.home}" fullpath="README.txt">
+                <include name="readme.txt" />
+            </zipfileset>
+            <zipfileset dir="${docs.home}" fullpath="LICENSE">
+                <include name="license.txt" />
+            </zipfileset>
+
+            <zipfileset dir="${docs.home}" prefix="docs">
+                <exclude name="*.txt" />
+                <exclude name="**/api/" />
+            </zipfileset>
+
+            <zipfileset dir="${dist.home}">
+                <include name="${app.name}-${app.version}.war" />
+            </zipfileset>
+        </zip>
+
+        <delete>
+            <fileset dir="${dist.home}">
+                <exclude name="${app.name}-${app.version}-src.zip"/>
+                <exclude name="${app.name}-${app.version}-src.tar.bz2"/>
+                <exclude name="${app.name}-${app.version}.zip"/>
+                <exclude name="${app.name}-${app.version}.tar.bz2"/>
+            </fileset>
+        </delete>
+
+
+    </target>
+
+
+    <!--
+
+    Creates javadoc API documentation for the classes.
+    No javadoc is created for the test classes.
+
+    -->
+    <target name="javadoc" depends="compile" description="Create Javadoc API documentation">
+
+        <mkdir dir="${docs.home}/api" />
+        <javadoc sourcepath="${src.home}" destdir="${docs.home}/api" excludepackagenames="${test.path}.*" packagenames="*">
+            <classpath refid="compile.classpath" />
+        </javadoc>
+
+    </target>
+
+
+    <!--
+
+    Tomcat specific deployment, change this to reflect your own container.
+    Will first undeploy the application.
+
+    -->
+    <target name="redeploy.cactuswar" unless="notdeployed">
+
+        <undeploy url="${manager.url}" username="${manager.username}" password="${manager.password}" path="/test" />
+        <deploy url="${manager.url}" username="${manager.username}" password="${manager.password}" path="/test" localWar="file://${dist.home}/${app.name}-${app.version}-CACTUS.war" />
+
+    </target>
+
+
+    <!--
+
+        Tomcat specific deployment, change this to reflect your own container.
+
+    -->
+    <target name="deploy.cactuswar" if="notdeployed">
+
+        <deploy url="${manager.url}" username="${manager.username}" password="${manager.password}" path="/test" localWar="file://${dist.home}/${app.name}-${app.version}-CACTUS.war" />
+
+    </target>
+
+
+    <!--
+
+    Creates the necesary folders.
+
+    -->
+    <target name="prepare">
+
+        <property name="commons-httpclient-3.0-rc3.jar" value="${external.libs}/commons-httpclient-3.0-rc3.jar" />
+        <property name="commons-digester-1.7.jar" value="${external.libs}/commons-digester-1.7.jar" />
+        <property name="commons-beanutils.jar" value="${external.libs}/commons-beanutils.jar" />
+        <property name="commons-codec-1.3.jar" value="${external.libs}/commons-codec-1.3.jar" />
+    	<property name="commons-logging-1.0.4.jar" value="${external.libs}/commons-logging-1.0.4.jar" />
+    	
+        <!-- Create build directories as needed -->
+        <mkdir  dir="${build.home}"/>
+        <mkdir  dir="${build.home}"/>
+        <mkdir  dir="${build.home}"/>
+        <mkdir  dir="${reports.test}"/>
+
+        <!-- Copy external dependencies as required -->
+        <mkdir  dir="${lib.home}"/>
+        <copy todir="${lib.home}" file="${commons-httpclient-3.0-rc3.jar}"/>
+        <copy todir="${lib.home}" file="${commons-digester-1.7.jar}"/>
+        <copy todir="${lib.home}" file="${commons-beanutils.jar}"/>
+        <copy todir="${lib.home}" file="${commons-codec-1.3.jar}"/>
+    	<copy todir="${lib.home}" file="${commons-logging-1.0.4.jar}"/>
+
+        <!-- Define the Cactus tasks -->
+        <taskdef resource="cactus.tasks" classpathref="compile.classpath" />
+
+        <!-- Tomcat specifc tasks -->
+        <taskdef name="deploy" classname="org.apache.catalina.ant.DeployTask" classpathref="compile.classpath"/>
+        <taskdef name="reload" classname="org.apache.catalina.ant.ReloadTask" classpathref="compile.classpath"/>
+        <taskdef name="undeploy" classname="org.apache.catalina.ant.UndeployTask" classpathref="compile.classpath"/>
+
+    </target>
+
+
+    <!--
+
+    Downloads all the necesarry libarays to the external.libs
+
+    -->
+    <target name="download" description='Downloads all the necesarry libarays to the external.libs'>
+        <mkdir dir="${external.libs}" />
+        <get src="${download.libs}/cactus-ant-1.7.jar" dest="${external.libs}/cactus-ant-1.7.jar"/>
+        <get src="${download.libs}/commons-beanutils.jar" dest="${external.libs}/commons-beanutils.jar"/>
+        <get src="${download.libs}/commons-codec-1.3.jar" dest="${external.libs}/commons-codec-1.3.jar"/>
+        <get src="${download.libs}/commons-digester-1.7.jar" dest="${external.libs}/commons-digester-1.7.jar"/>
+        <get src="${download.libs}/commons-httpclient-3.0-rc3.jar" dest="${external.libs}/commons-httpclient-3.0-rc3.jar"/>
+        <get src="${download.libs}/commons-logging-1.0.4.jar" dest="${external.libs}/commons-logging-1.0.4.jar"/>
+        <get src="${download.libs}/aspectjrt-1.2.1.jar" dest="${external.libs}/aspectjrt-1.2.1.jar"/>
+        <get src="${download.libs}/cactus-1.7.jar" dest="${external.libs}/cactus-1.7.jar"/>
+        <get src="${download.libs}/xercesImpl.jar" dest="${external.libs}/xercesImpl.jar"/>
+        <get src="${download.libs}/junit.jar" dest="${external.libs}/junit.jar"/>
+        <get src="${download.libs}/catalina-ant.jar" dest="${external.libs}/catalina-ant.jar"/>
+        <get src="${download.libs}/servlet-api.jar" dest="${external.libs}/servlet-api.jar"/>
+    </target>
+
+
+</project>
