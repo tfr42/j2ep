@@ -49,9 +49,9 @@ public class DirectoryRule extends BaseRule {
             if (!directory.startsWith("/")) {
                 directory = "/" + directory;
             }
-            if (!directory.endsWith(("/"))) {
-                directory += "/";
-            }
+//            if (!directory.endsWith(("/"))) {
+//                directory += "/";
+//            }
             this.directory = directory;
         }
     }
