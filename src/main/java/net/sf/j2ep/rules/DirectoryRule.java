@@ -36,6 +36,32 @@ public class DirectoryRule extends BaseRule {
     private String directory;
     
     /**
+     * The originally set directory structure before appending and prepending slashes
+     */
+    private String originalDirectory;
+    
+    private boolean isAppendTrailingSlash = true;
+    
+    /**
+     * Decide whether a trailing slash should be appended to directory settings without a trailing slash.
+     * @param isAppendTrailingSlash
+     */
+    public void setIsAppendTrailingSlash(String isAppendTrailingSlash) {
+        if (isAppendTrailingSlash != null && isAppendTrailingSlash.equals("false")) {
+        	this.isAppendTrailingSlash = false;
+        	directory = prependSlashIfNeccessary(originalDirectory);
+        }
+    }
+    
+    /**
+     * Return the trailing slash setting
+     * @return true if slashes are appended to directory settings that do not end with a slash, false if not
+     */
+    public boolean getAppendTrailingSlash () {
+    	return isAppendTrailingSlash;
+    }
+    
+    /**
      * Sets the directory structure that will
      * be mapped to a specified server.
      *
@@ -49,12 +75,26 @@ public class DirectoryRule extends BaseRule {
             if (!directory.startsWith("/")) {
                 directory = "/" + directory;
             }
-//            if (!directory.endsWith(("/"))) {
-//                directory += "/";
-//            }
+            originalDirectory = directory;
+            directory = prependSlashIfNeccessary(directory);
+            directory = appendSlashIfNeccessary(directory);
             this.directory = directory;
         }
     }
+
+	private String appendSlashIfNeccessary(String directory) {
+		if (!directory.endsWith(("/")) && isAppendTrailingSlash) {
+		    directory += "/";
+		}
+		return directory;
+	}
+
+	private String prependSlashIfNeccessary(String directory) {
+		if (!directory.startsWith("/")) {
+		    directory = "/" + directory;
+		}
+		return directory;
+	}
 
     /**
      * Returns the directory structure that
