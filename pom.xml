@@ -111,4 +111,43 @@
 		<server.url>http://localhost:8080</server.url>
 		<catalina.home></catalina.home>
 	</properties>
+  
+  <scm>
+    <connection>scm:git:git@github.com:lat-lon/j2ep.git</connection>
+    <developerConnection>scm:git:git@github.com:lat-lon/j2ep.git</developerConnection>
+    <url>https://github.com/lat-lon/j2ep.git</url>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>latlon-repo</id>
+      <url>http://repo.lat-lon/nexus/content/groups/public/</url>
+    </repository>
+    <repository>
+      <id>j2ep-releases</id>
+      <url>http://repo.lat-lon/nexus/content/repositories/j2ep-release/</url>
+    </repository>
+    <repository>
+      <id>j2ep-snapshots</id>
+      <url>http://repo.lat-lon/nexus/content/repositories/j2ep-snapshots/</url>
+    </repository>
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <id>j2ep-releases</id>
+      <url>http://repo.lat-lon/nexus/content/repositories/j2ep-release/</url>
+    </repository>
+    <snapshotRepository>
+      <id>j2ep-snapshots</id>
+      <url>http://repo.lat-lon/nexus/content/repositories/j2ep-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>latlon-repo</id>
+      <url>http://repo.lat-lon/nexus/content/groups/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
 </project>
