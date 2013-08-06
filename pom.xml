@@ -110,6 +110,9 @@
 	<properties>
 		<server.url>http://localhost:8080</server.url>
 		<catalina.home></catalina.home>
+    <!-- Sonar config -->
+    <sonar.host.url>http://vento.lat-lon:9000</sonar.host.url>
+    <sonar.jdbc.url>jdbc:postgresql://habub/sonar</sonar.jdbc.url>
 	</properties>
   
   <scm>
