@@ -54,7 +54,11 @@ import org.apache.commons.logging.LogFactory;
  */
 public class ProxyFilter implements Filter {
 
-    /** 
+    private static final String CONFIG_XML = "/config.xml";
+
+	private static final String DEFAULT_PATH = "/WEB-INF/config/data.xml";
+
+	/** 
      * The server chain, will be traversed to find a matching server.
      */
     private ServerChain serverChain;
@@ -196,19 +200,36 @@ public class ProxyFilter implements Filter {
         httpClient.getParams().setBooleanParameter(HttpClientParams.USE_EXPECT_CONTINUE, false);
         httpClient.getParams().setCookiePolicy(CookiePolicy.IGNORE_COOKIES);
         
-        String data = filterConfig.getInitParameter("dataUrl");
-        if (data == null) {
+        String proxyConfigEnv = filterConfig.getInitParameter("proxyConfigEnv");
+        if (proxyConfigEnv == null) {
             serverChain = null;
         } else {
             try {
-                File dataFile = new File(filterConfig.getServletContext().getRealPath(data));
-                ConfigParser parser = new ConfigParser(dataFile);
-                serverChain = parser.getServerChain();               
+            	String path = buildConfigFilePath(proxyConfigEnv);
+                processConfiguration(path);               
             } catch (Exception e) {
-                throw new ServletException(e);
+            	try {
+            		String path = filterConfig.getServletContext().getRealPath(DEFAULT_PATH);
+            		processConfiguration(path);    
+            	} catch (Exception e1) {
+            		throw new ServletException(e);
+            	}
             } 
         }
     }
+
+	private void processConfiguration(String path) {
+		File dataFile = new File(path);
+		ConfigParser parser = new ConfigParser(dataFile);
+		serverChain = parser.getServerChain();
+	}
+
+	private String buildConfigFilePath(String proxyConfigEnv) {
+		String path = System.getenv(proxyConfigEnv);
+		if (!path.endsWith("/")) path += "/";
+		path += CONFIG_XML;
+		return path;
+	}
 
     /**
      * Called when this filter is destroyed.
