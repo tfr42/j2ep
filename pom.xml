@@ -3,8 +3,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.latlon</groupId>
 	<artifactId>j2ep</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<version>1.0.0-blackbridge-SNAPSHOT</version>
+	<packaging>jar</packaging>
 	<name>j2ep</name>
 	<description>Fork of jEasy Extensible Proxy - svn://svn.code.sf.net/p/j2ep/code/trunk</description>
 	<build>
