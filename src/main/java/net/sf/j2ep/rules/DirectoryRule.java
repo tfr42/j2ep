@@ -19,122 +19,121 @@ package net.sf.j2ep.rules;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * A rule that will check the start of the URI for a specifed
- * starting directory/directories. If the directory is at the start this
- * rule matches. The process method will then remove this directory
- * from the URI, making it easy to map various servers to directory 
- * structures.
- * If one needs some more advanced types of rewriting use the RewriteRule.
- *
+ * A rule that will check the start of the URI for a specifed starting directory/directories. If the directory is at the
+ * start this rule matches. The process method will then remove this directory from the URI, making it easy to map
+ * various servers to directory structures. If one needs some more advanced types of rewriting use the RewriteRule.
+ * 
  * @author Anders Nyman
  */
 public class DirectoryRule extends BaseRule {
 
-    /** 
+    /**
      * The directory structure.
      */
     private String directory;
-    
+
     /**
      * The originally set directory structure before appending and prepending slashes
      */
     private String originalDirectory;
-    
+
     private boolean isAppendTrailingSlash = true;
-    
+
     /**
      * Decide whether a trailing slash should be appended to directory settings without a trailing slash.
+     * 
      * @param isAppendTrailingSlash
      */
-    public void setIsAppendTrailingSlash(String isAppendTrailingSlash) {
-        if (isAppendTrailingSlash != null && isAppendTrailingSlash.equals("false")) {
-        	this.isAppendTrailingSlash = false;
-        	directory = prependSlashIfNeccessary(originalDirectory);
+    public void setIsAppendTrailingSlash( String isAppendTrailingSlash ) {
+        if ( isAppendTrailingSlash != null && isAppendTrailingSlash.equals( "false" ) ) {
+            this.isAppendTrailingSlash = false;
+            directory = prependSlashIfNeccessary( originalDirectory );
         }
     }
-    
+
     /**
      * Return the trailing slash setting
+     * 
      * @return true if slashes are appended to directory settings that do not end with a slash, false if not
      */
-    public boolean getAppendTrailingSlash () {
-    	return isAppendTrailingSlash;
+    public boolean getAppendTrailingSlash() {
+        return isAppendTrailingSlash;
     }
-    
+
     /**
-     * Sets the directory structure that will
-     * be mapped to a specified server.
-     *
-     * @param directory The directory string
+     * Sets the directory structure that will be mapped to a specified server.
+     * 
+     * @param directory
+     *            The directory string
      */
-    public void setDirectory(String directory) {
-        if (directory == null) {
-            throw new IllegalArgumentException(
-                "The directory string cannot be null.");
+    public void setDirectory( String directory ) {
+        if ( directory == null ) {
+            throw new IllegalArgumentException( "The directory string cannot be null." );
         } else {
-            if (!directory.startsWith("/")) {
+            if ( !directory.startsWith( "/" ) ) {
                 directory = "/" + directory;
             }
             originalDirectory = directory;
-            directory = prependSlashIfNeccessary(directory);
-            directory = appendSlashIfNeccessary(directory);
+            directory = prependSlashIfNeccessary( directory );
+            directory = appendSlashIfNeccessary( directory );
             this.directory = directory;
         }
     }
 
-	private String appendSlashIfNeccessary(String directory) {
-		if (!directory.endsWith(("/")) && isAppendTrailingSlash) {
-		    directory += "/";
-		}
-		return directory;
-	}
+    private String appendSlashIfNeccessary( String directory ) {
+        if ( !directory.endsWith( ( "/" ) ) && isAppendTrailingSlash ) {
+            directory += "/";
+        }
+        return directory;
+    }
 
-	private String prependSlashIfNeccessary(String directory) {
-		if (!directory.startsWith("/")) {
-		    directory = "/" + directory;
-		}
-		return directory;
-	}
+    private String prependSlashIfNeccessary( String directory ) {
+        if ( !directory.startsWith( "/" ) ) {
+            directory = "/" + directory;
+        }
+        return directory;
+    }
 
     /**
-     * Returns the directory structure that
-     * this rule will match on.
-     *
+     * Returns the directory structure that this rule will match on.
+     * 
      * @return The directory string
      */
     public String getDirectory() {
         return directory;
     }
-    
+
     /**
-     * Will see if the directory for the incoming URI is the same
-     * as this rule is set to match on.
+     * Will see if the directory for the incoming URI is the same as this rule is set to match on.
      * 
      * @see net.sf.j2ep.model.Rule#matches(javax.servlet.http.HttpServletRequest)
      */
-    public boolean matches(HttpServletRequest request) {
+    public boolean matches( HttpServletRequest request ) {
         String uri = request.getServletPath();
-        return (uri.startsWith(directory));
+        return ( uri.startsWith( directory ) );
     }
-    
+
     /**
      * Removes the specified mapping directory from the URI.
      * 
      * @see net.sf.j2ep.model.Rule#process(java.lang.String)
      */
-    public String process(String uri) {
-        return uri.substring(directory.length()-1);
+    public String process( String uri ) {
+        if ( !isAppendTrailingSlash )
+            return uri.substring( directory.length() );
+        else
+            return uri.substring( directory.length() - 1 );
     }
-    
+
     /**
-     * Does the opposite of process. revert(String URI) will add the directory
-     * specified to the start of the incoming URI.
+     * Does the opposite of process. revert(String URI) will add the directory specified to the start of the incoming
+     * URI.
      * 
      * @see net.sf.j2ep.model.Rule#revert(java.lang.String)
      */
-    public String revert(String uri) {
-        if (uri.startsWith("/")) {
-            return directory + uri.substring(1);
+    public String revert( String uri ) {
+        if ( uri.startsWith( "/" ) ) {
+            return directory + uri.substring( 1 );
         } else {
             return uri;
         }
