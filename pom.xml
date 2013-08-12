@@ -1,9 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.latlon</groupId>
 	<artifactId>j2ep</artifactId>
-	<version>1.0.0-securityproxy-master-SNAPSHOT</version>
+	<version>1.0-securityproxy-master</version>
 	<packaging>jar</packaging>
 	<name>j2ep</name>
 	<description>Fork of jEasy Extensible Proxy - svn://svn.code.sf.net/p/j2ep/code/trunk</description>
@@ -109,7 +108,7 @@
 	</dependencies>
 	<properties>
 		<server.url>http://localhost:8080</server.url>
-		<catalina.home></catalina.home>
+		<catalina.home />
     <!-- Sonar config -->
     <sonar.host.url>http://vento.lat-lon:9000</sonar.host.url>
     <sonar.jdbc.url>jdbc:postgresql://habub/sonar</sonar.jdbc.url>
