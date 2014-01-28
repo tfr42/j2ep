@@ -27,6 +27,7 @@ public class BaseServerFromUrlCreator {
      * @return Server
      */
     public Server createServer( String url, ServletRequest request ) {
+        checkRequiredParameters( url, request );
         String urlWithoutProtocol = retrieveUrlWithoutProtocol( url );
         int divideDomainNameAndPathIndex = urlWithoutProtocol.indexOf( "/" );
         String domainName = urlWithoutProtocol.substring( 0, divideDomainNameAndPathIndex );
@@ -36,8 +37,12 @@ public class BaseServerFromUrlCreator {
     }
 
     private String retrieveUrlWithoutProtocol( String url ) {
-        int protocolIndex = url.indexOf( "//" );
-        return url.substring( protocolIndex + 2 );
+        if ( url.contains( "//" ) ) {
+            int protocolIndex = url.indexOf( "//" );
+            return url.substring( protocolIndex + 2 );
+        } else {
+            return url;
+        }
     }
 
     private String retrievePath( String urlWithoutProtocol, int divideDomainNameAndPathIndex ) {
@@ -78,5 +83,12 @@ public class BaseServerFromUrlCreator {
         directoryRule.setDirectory( directoryPath );
         directoryRule.setIsAppendTrailingSlash( DIRECTORY_RULE_IS_APPENDING_TRAILING_SLASH );
         return directoryRule;
+    }
+
+    private void checkRequiredParameters( String url, ServletRequest request ) {
+        if ( url == null )
+            throw new IllegalArgumentException( "Url must not be null!" );
+        if ( request == null )
+            throw new IllegalArgumentException( "Request must not be null!" );
     }
 }
