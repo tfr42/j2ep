@@ -34,6 +34,7 @@ import net.sf.j2ep.model.Server;
 
 import net.sf.j2ep.rules.DirectoryRule;
 import net.sf.j2ep.servers.BaseServer;
+import net.sf.j2ep.servers.BaseServerFromUrlCreator;
 import org.apache.commons.httpclient.*;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.params.HttpClientParams;
@@ -61,10 +62,6 @@ public class ProxyFilter implements Filter {
 	private static final String DEFAULT_PATH = "/WEB-INF/config/data.xml";
 
     private static final String REQUEST_ATTRIBUTE_SERVICE_URL = "net.sf.j2ep.serviceurl";
-
-    private static final String BASE_SERVER_IS_REWRITING = "true";
-
-    private static final String DIRECTORY_RULE_IS_APPENDING_TRAILING_SLASH = "false";
 
     /**
      * The server chain, will be traversed to find a matching server.
@@ -98,12 +95,8 @@ public class ProxyFilter implements Filter {
         if (server == null) {
             Object requestAttributeServiceUrl = request.getAttribute( REQUEST_ATTRIBUTE_SERVICE_URL );
             if (requestAttributeServiceUrl != null) {
-                String urlWithoutProtocol = retrieveUrlWithoutProtocol( requestAttributeServiceUrl );
-                int divideDomainNameAndPathIndex = urlWithoutProtocol.indexOf( "/" );
-                String domainName = urlWithoutProtocol.substring( 0, divideDomainNameAndPathIndex );
-                String path = retrievePath( urlWithoutProtocol, divideDomainNameAndPathIndex );
-                String directoryPath = retrieveDirectoryPath( httpRequest );
-                server = createServer( domainName, path, directoryPath );
+                BaseServerFromUrlCreator baseServerCreator = new BaseServerFromUrlCreator();
+                server = baseServerCreator.createServer(requestAttributeServiceUrl.toString(), request);
             } else {
                 server = serverChain.evaluate(httpRequest);
             }
@@ -259,51 +252,5 @@ public class ProxyFilter implements Filter {
         log = null;
         httpClient = null;
         serverChain = null;
-    }
-
-    private String retrieveUrlWithoutProtocol( Object requestAttributeServiceUrl ) {
-        String serviceUrl = requestAttributeServiceUrl.toString();
-        int protocolIndex = serviceUrl.indexOf( "//" );
-        return serviceUrl.substring( protocolIndex + 2 );
-    }
-
-    private String retrievePath( String urlWithoutProtocol, int divideDomainNameAndPathIndex ) {
-        String path = urlWithoutProtocol.substring( divideDomainNameAndPathIndex );
-        if (path.endsWith( "?" ))
-            return path.substring( 0, path.length() - 1 );
-        else
-            return path;
-    }
-
-    private String retrieveDirectoryPath( HttpServletRequest httpRequest ) {
-        String directoryPath = httpRequest.getServletPath();
-        if ( directoryPath.contains("/")){
-            int directoryPathIndex = directoryPath.lastIndexOf( "/" );
-            return directoryPath.substring( directoryPathIndex );
-        } else {
-            return directoryPath;
-        }
-    }
-
-    private Server createServer( String domainName, String path, String directoryPath ) {
-        BaseServer baseServer = createBaseServer( domainName, path );
-        DirectoryRule directoryRule = createDirectoryRule( directoryPath );
-        baseServer.setRule( directoryRule );
-        return baseServer;
-    }
-
-    private BaseServer createBaseServer( String domainName, String path ) {
-        BaseServer baseServer = new BaseServer();
-        baseServer.setDomainName( domainName );
-        baseServer.setPath( path );
-        baseServer.setIsRewriting( BASE_SERVER_IS_REWRITING );
-        return baseServer;
-    }
-
-    private DirectoryRule createDirectoryRule( String directoryPath ) {
-        DirectoryRule directoryRule = new DirectoryRule();
-        directoryRule.setDirectory( directoryPath );
-        directoryRule.setIsAppendTrailingSlash( DIRECTORY_RULE_IS_APPENDING_TRAILING_SLASH );
-        return directoryRule;
     }
 }
