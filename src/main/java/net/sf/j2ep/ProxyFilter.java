@@ -32,6 +32,9 @@ import net.sf.j2ep.model.RequestHandler;
 import net.sf.j2ep.model.ResponseHandler;
 import net.sf.j2ep.model.Server;
 
+import net.sf.j2ep.rules.DirectoryRule;
+import net.sf.j2ep.servers.BaseServer;
+import net.sf.j2ep.servers.BaseServerFromUrlCreator;
 import org.apache.commons.httpclient.*;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.params.HttpClientParams;
@@ -58,7 +61,9 @@ public class ProxyFilter implements Filter {
 
 	private static final String DEFAULT_PATH = "/WEB-INF/config/data.xml";
 
-	/** 
+    private static final String REQUEST_ATTRIBUTE_SERVICE_URL = "net.sf.j2ep.serviceurl";
+
+    /**
      * The server chain, will be traversed to find a matching server.
      */
     private ServerChain serverChain;
@@ -88,9 +93,15 @@ public class ProxyFilter implements Filter {
 
         Server server = (Server) httpRequest.getAttribute("proxyServer");  
         if (server == null) {
-            server = serverChain.evaluate(httpRequest);
+            Object requestAttributeServiceUrl = request.getAttribute( REQUEST_ATTRIBUTE_SERVICE_URL );
+            if (requestAttributeServiceUrl != null) {
+                BaseServerFromUrlCreator baseServerCreator = new BaseServerFromUrlCreator();
+                server = baseServerCreator.createServer(requestAttributeServiceUrl.toString(), request);
+            } else {
+                server = serverChain.evaluate(httpRequest);
+            }
         }
-        
+
         if (server == null) {
             filterChain.doFilter(request, response);
         } else {
@@ -128,7 +139,7 @@ public class ProxyFilter implements Filter {
             }
         }
     }
-    
+
     /**
      * Will build a URI but including the Query String. That means that it really
      * isn't a URI, but quite near.
