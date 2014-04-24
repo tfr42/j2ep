@@ -218,7 +218,7 @@ public class ProxyFilter implements Filter {
         httpClient.getParams().setBooleanParameter( HttpClientParams.USE_EXPECT_CONTINUE, false );
         httpClient.getParams().setCookiePolicy( CookiePolicy.IGNORE_COOKIES );
 
-        String proxyConfigFile = filterConfig.getInitParameter( "proxyConfigFile" );
+        String proxyConfigFile = filterConfig.getInitParameter( "proxyConfigResource" );
         String proxyConfigEnv = filterConfig.getInitParameter( "proxyConfigEnv" );
         if ( proxyConfigFile != null ) {
             parseConfigFromFileInClasspath( proxyConfigFile );
