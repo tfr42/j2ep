@@ -18,9 +18,15 @@ package net.sf.j2ep;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.UnknownHostException;
 
-import javax.servlet.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -31,11 +37,14 @@ import net.sf.j2ep.model.AllowedMethodHandler;
 import net.sf.j2ep.model.RequestHandler;
 import net.sf.j2ep.model.ResponseHandler;
 import net.sf.j2ep.model.Server;
-
-import net.sf.j2ep.rules.DirectoryRule;
-import net.sf.j2ep.servers.BaseServer;
 import net.sf.j2ep.servers.BaseServerFromUrlCreator;
-import org.apache.commons.httpclient.*;
+
+import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.HttpMethodBase;
+import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.logging.Log;
@@ -44,14 +53,12 @@ import org.apache.commons.logging.LogFactory;
 /**
  * A reverse proxy using a set of Rules to identify which resource to proxy.
  * 
- * At first the rule chain is traversed trying to find a matching rule.
- * When the rule is found it is given the option to rewrite the URL.
- * The rewritten URL is then sent to a Server creating a Response Handler
- * that can be used to process the response with streams and headers.
+ * At first the rule chain is traversed trying to find a matching rule. When the rule is found it is given the option to
+ * rewrite the URL. The rewritten URL is then sent to a Server creating a Response Handler that can be used to process
+ * the response with streams and headers.
  * 
- * The rules and servers are created dynamically and are specified in the
- * XML data file. This allows the proxy to be easily extended by creating
- * new rules and new servers.
+ * The rules and servers are created dynamically and are specified in the XML data file. This allows the proxy to be
+ * easily extended by creating new rules and new servers.
  * 
  * @author Anders Nyman
  */
@@ -59,7 +66,7 @@ public class ProxyFilter implements Filter {
 
     private static final String CONFIG_XML = "/config.xml";
 
-	private static final String DEFAULT_PATH = "/WEB-INF/config/data.xml";
+    private static final String DEFAULT_PATH = "/WEB-INF/config/data.xml";
 
     private static final String REQUEST_ATTRIBUTE_SERVICE_URL = "net.sf.j2ep.serviceurl";
 
@@ -67,73 +74,72 @@ public class ProxyFilter implements Filter {
      * The server chain, will be traversed to find a matching server.
      */
     private ServerChain serverChain;
-    
-    /** 
+
+    /**
      * Logging element supplied by commons-logging.
      */
     private static Log log;
-    
-    /** 
+
+    /**
      * The httpclient used to make all connections with, supplied by commons-httpclient.
      */
     private HttpClient httpClient;
 
     /**
-     * Implementation of a reverse-proxy. All request go through here. This is
-     * the main class where are handling starts.
+     * Implementation of a reverse-proxy. All request go through here. This is the main class where are handling starts.
      * 
-     * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest,
-     *      javax.servlet.ServletResponse, javax.servlet.FilterChain)
+     * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse,
+     *      javax.servlet.FilterChain)
      */
-    public void doFilter(ServletRequest request, ServletResponse response,
-            FilterChain filterChain) throws IOException, ServletException {
+    public void doFilter( ServletRequest request, ServletResponse response, FilterChain filterChain )
+                            throws IOException, ServletException {
 
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         HttpServletRequest httpRequest = (HttpServletRequest) request;
 
-        Server server = (Server) httpRequest.getAttribute("proxyServer");  
-        if (server == null) {
+        Server server = (Server) httpRequest.getAttribute( "proxyServer" );
+        if ( server == null ) {
             Object requestAttributeServiceUrl = request.getAttribute( REQUEST_ATTRIBUTE_SERVICE_URL );
-            if (requestAttributeServiceUrl != null) {
+            if ( requestAttributeServiceUrl != null ) {
                 BaseServerFromUrlCreator baseServerCreator = new BaseServerFromUrlCreator();
-                server = baseServerCreator.createServer(requestAttributeServiceUrl.toString(), request);
+                server = baseServerCreator.createServer( requestAttributeServiceUrl.toString(), request );
             } else {
-                server = serverChain.evaluate(httpRequest);
+                server = serverChain.evaluate( httpRequest );
             }
         }
 
-        if (server == null) {
-            filterChain.doFilter(request, response);
+        if ( server == null ) {
+            filterChain.doFilter( request, response );
         } else {
-            String uri = server.getRule().process(getURI(httpRequest));
+            String uri = server.getRule().process( getURI( httpRequest ) );
             String url = request.getScheme() + "://" + server.getDomainName() + server.getPath() + uri;
-            log.debug("Connecting to " + url);
-            
-            ResponseHandler responseHandler = null;
-            
-            try {
-                httpRequest = server.preExecute(httpRequest);
-                responseHandler = executeRequest(httpRequest, url);
-                httpResponse = server.postExecute(httpResponse);
+            log.debug( "Connecting to " + url );
 
-                responseHandler.process(httpResponse);
-            } catch (HttpException e) {
-                log.error("Problem while connecting to server", e);
-                httpResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                server.setConnectionExceptionRecieved(e);
-            } catch (UnknownHostException e) {
-                log.error("Could not connection to the host specified", e);
-                httpResponse.setStatus(HttpServletResponse.SC_GATEWAY_TIMEOUT);
-                server.setConnectionExceptionRecieved(e);
-            } catch (IOException e) {
-                log.error( "Problem probably with the input being send, either with a Header or the Stream", e);
-                httpResponse .setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            } catch (MethodNotAllowedException e) {
-                log.error("Incoming method could not be handled", e);
-                httpResponse.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-                httpResponse.setHeader("Allow", e.getAllowedMethods());
+            ResponseHandler responseHandler = null;
+
+            try {
+                httpRequest = server.preExecute( httpRequest );
+                responseHandler = executeRequest( httpRequest, url );
+                httpResponse = server.postExecute( httpResponse );
+
+                responseHandler.process( httpResponse );
+            } catch ( HttpException e ) {
+                log.error( "Problem while connecting to server", e );
+                httpResponse.setStatus( HttpServletResponse.SC_INTERNAL_SERVER_ERROR );
+                server.setConnectionExceptionRecieved( e );
+            } catch ( UnknownHostException e ) {
+                log.error( "Could not connection to the host specified", e );
+                httpResponse.setStatus( HttpServletResponse.SC_GATEWAY_TIMEOUT );
+                server.setConnectionExceptionRecieved( e );
+            } catch ( IOException e ) {
+                log.error( "Problem probably with the input being send, either with a Header or the Stream", e );
+                httpResponse.setStatus( HttpServletResponse.SC_INTERNAL_SERVER_ERROR );
+            } catch ( MethodNotAllowedException e ) {
+                log.error( "Incoming method could not be handled", e );
+                httpResponse.setStatus( HttpServletResponse.SC_METHOD_NOT_ALLOWED );
+                httpResponse.setHeader( "Allow", e.getAllowedMethods() );
             } finally {
-                if (responseHandler != null) {
+                if ( responseHandler != null ) {
                     responseHandler.close();
                 }
             }
@@ -141,110 +147,139 @@ public class ProxyFilter implements Filter {
     }
 
     /**
-     * Will build a URI but including the Query String. That means that it really
-     * isn't a URI, but quite near.
+     * Will build a URI but including the Query String. That means that it really isn't a URI, but quite near.
      * 
-     * @param httpRequest Request to get the URI and query string from
+     * @param httpRequest
+     *            Request to get the URI and query string from
      * @return The URI for this request including the query string
      */
-    private String getURI(HttpServletRequest httpRequest) {
+    private String getURI( HttpServletRequest httpRequest ) {
         String contextPath = httpRequest.getContextPath();
-        String uri = httpRequest.getRequestURI().substring(contextPath.length());
-        if (httpRequest.getQueryString() != null) {
+        String uri = httpRequest.getRequestURI().substring( contextPath.length() );
+        if ( httpRequest.getQueryString() != null ) {
             uri += "?" + httpRequest.getQueryString();
         }
         return uri;
     }
 
     /**
-     * Will create the method and execute it. After this the method
-     * is sent to a ResponseHandler that is returned.
+     * Will create the method and execute it. After this the method is sent to a ResponseHandler that is returned.
      * 
-     * @param httpRequest Request we are receiving from the client
-     * @param url The location we are proxying to
+     * @param httpRequest
+     *            Request we are receiving from the client
+     * @param url
+     *            The location we are proxying to
      * @return A ResponseHandler that can be used to write the response
-     * @throws MethodNotAllowedException If the method specified by the request isn't handled
-     * @throws IOException When there is a problem with the streams
-     * @throws HttpException The httpclient can throw HttpExcetion when executing the method
+     * @throws MethodNotAllowedException
+     *             If the method specified by the request isn't handled
+     * @throws IOException
+     *             When there is a problem with the streams
+     * @throws HttpException
+     *             The httpclient can throw HttpExcetion when executing the method
      */
-    private ResponseHandler executeRequest(HttpServletRequest httpRequest,
-            String url) throws MethodNotAllowedException, IOException,
-            HttpException {
-        RequestHandler requestHandler = RequestHandlerFactory
-                .createRequestMethod(httpRequest.getMethod());
+    private ResponseHandler executeRequest( HttpServletRequest httpRequest, String url )
+                            throws MethodNotAllowedException, IOException, HttpException {
+        RequestHandler requestHandler = RequestHandlerFactory.createRequestMethod( httpRequest.getMethod() );
 
-        HttpMethod method = requestHandler.process(httpRequest, url);
-        method.setFollowRedirects(false);
+        HttpMethod method = requestHandler.process( httpRequest, url );
+        method.setFollowRedirects( false );
 
         /*
-         * Why does method.validate() return true when the method has been
-         * aborted? I mean, if validate returns true the API says that means
-         * that the method is ready to be executed. 
-         * TODO I don't like doing type casting here, see above.
+         * Why does method.validate() return true when the method has been aborted? I mean, if validate returns true the
+         * API says that means that the method is ready to be executed. TODO I don't like doing type casting here, see
+         * above.
          */
-        if (!((HttpMethodBase) method).isAborted()) {
-            httpClient.executeMethod(method);
+        if ( !( (HttpMethodBase) method ).isAborted() ) {
+            httpClient.executeMethod( method );
 
-            if (method.getStatusCode() == 405) {
-                Header allow = method.getResponseHeader("allow");
+            if ( method.getStatusCode() == 405 ) {
+                Header allow = method.getResponseHeader( "allow" );
                 String value = allow.getValue();
-                throw new MethodNotAllowedException(
-                        "Status code 405 from server", AllowedMethodHandler
-                                .processAllowHeader(value));
+                throw new MethodNotAllowedException( "Status code 405 from server",
+                                                     AllowedMethodHandler.processAllowHeader( value ) );
             }
         }
 
-        return ResponseHandlerFactory.createResponseHandler(method);
+        return ResponseHandlerFactory.createResponseHandler( method );
     }
 
     /**
-     * Called upon initialization, Will create the ConfigParser and get the
-     * RuleChain back. Will also configure the httpclient.
+     * Called upon initialization, Will create the ConfigParser and get the RuleChain back. Will also configure the
+     * httpclient.
      * 
      * @see javax.servlet.Filter#init(javax.servlet.FilterConfig)
      */
-    public void init(FilterConfig filterConfig) throws ServletException {
-        log = LogFactory.getLog(ProxyFilter.class);
-        AllowedMethodHandler.setAllowedMethods("OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE");
-        
-        httpClient = new HttpClient(new MultiThreadedHttpConnectionManager());
-        httpClient.getParams().setBooleanParameter(HttpClientParams.USE_EXPECT_CONTINUE, false);
-        httpClient.getParams().setCookiePolicy(CookiePolicy.IGNORE_COOKIES);
-        
-        String proxyConfigEnv = filterConfig.getInitParameter("proxyConfigEnv");
-        if (proxyConfigEnv == null) {
-            serverChain = null;
+    public void init( FilterConfig filterConfig )
+                            throws ServletException {
+        log = LogFactory.getLog( ProxyFilter.class );
+        AllowedMethodHandler.setAllowedMethods( "OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE" );
+
+        httpClient = new HttpClient( new MultiThreadedHttpConnectionManager() );
+        httpClient.getParams().setBooleanParameter( HttpClientParams.USE_EXPECT_CONTINUE, false );
+        httpClient.getParams().setCookiePolicy( CookiePolicy.IGNORE_COOKIES );
+
+        String proxyConfigFile = filterConfig.getInitParameter( "proxyConfigFile" );
+        String proxyConfigEnv = filterConfig.getInitParameter( "proxyConfigEnv" );
+        if ( proxyConfigFile != null ) {
+            parseConfigFromFileInClasspath( proxyConfigFile );
+        } else if ( proxyConfigEnv != null ) {
+            parseConfigFileFromSystemEnvDirectory( proxyConfigEnv );
         } else {
-            try {
-            	String path = buildConfigFilePath(proxyConfigEnv);
-                processConfiguration(path);               
-            } catch (Exception e) {
-            	try {
-            		String path = filterConfig.getServletContext().getRealPath(DEFAULT_PATH);
-            		processConfiguration(path);    
-            	} catch (Exception e1) {
-            		throw new ServletException(e);
-            	}
-            } 
+            parseConfigFileFromDefaultPath( filterConfig );
         }
     }
 
-	private void processConfiguration(String path) {
-		File dataFile = new File(path);
-		ConfigParser parser = new ConfigParser(dataFile);
-		serverChain = parser.getServerChain();
-	}
+    private void parseConfigFromFileInClasspath( String proxyConfigFile )
+                            throws ServletException {
+        try {
+            InputStream resourceAsStream = ProxyFilter.class.getResourceAsStream( proxyConfigFile );
+            ConfigParser parser = new ConfigParser( resourceAsStream );
+            serverChain = parser.getServerChain();
+        } catch ( Exception e ) {
+            log.error( "j2ep configuration could not be read from classpath resource!", e );
+            throw new ServletException( e );
+        }
+    }
 
-	private String buildConfigFilePath(String proxyConfigEnv) {
-		String path = System.getenv(proxyConfigEnv);
-		if (!path.endsWith("/")) path += "/";
-		path += CONFIG_XML;
-		return path;
-	}
+    private void parseConfigFileFromSystemEnvDirectory( String proxyConfigEnv )
+                            throws ServletException {
+        try {
+            String path = buildConfigFilePath( proxyConfigEnv );
+            processConfiguration( path );
+        } catch ( Exception e ) {
+            log.error( "j2ep configuration could not be read from system environment variable!", e );
+            throw new ServletException( e );
+        }
+    }
+
+    private void parseConfigFileFromDefaultPath( FilterConfig filterConfig )
+                            throws ServletException {
+        String path = null;
+        try {
+            path = filterConfig.getServletContext().getRealPath( DEFAULT_PATH );
+            processConfiguration( path );
+        } catch ( Exception e ) {
+            log.error( "j2ep configuration could not be read from default path " + path, e );
+            throw new ServletException( e );
+        }
+    }
+
+    private void processConfiguration( String path ) {
+        File dataFile = new File( path );
+        ConfigParser parser = new ConfigParser( dataFile );
+        serverChain = parser.getServerChain();
+    }
+
+    private String buildConfigFilePath( String proxyConfigEnv ) {
+        String path = System.getenv( proxyConfigEnv );
+        if ( !path.endsWith( "/" ) )
+            path += "/";
+        path += CONFIG_XML;
+        return path;
+    }
 
     /**
-     * Called when this filter is destroyed.
-     * Releases the fields.
+     * Called when this filter is destroyed. Releases the fields.
      * 
      * @see javax.servlet.Filter#destroy()
      */

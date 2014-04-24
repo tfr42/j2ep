@@ -17,6 +17,10 @@
 package net.sf.j2ep;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -53,11 +57,45 @@ public class ConfigParser {
      * mappings included.
      * 
      * @param data The config file containing the XML data structure
+     * @throws FileNotFoundException 
      */
-    public ConfigParser(File data) {
+    public ConfigParser( File data ) {
+       createServerChain( data );
+    }
+
+    /**
+     * Standard constructor only specifying the input file. The constructor will
+     * parse the config and build a corresponding rule chain with the server
+     * mappings included.
+     * 
+     * @param data The config file containing the XML data structure
+     */
+    public ConfigParser(InputStream data) {
+        createServerChain( data );
+    }
+
+
+    private void createServerChain( File data ) {
+        log = LogFactory.getLog( ConfigParser.class );
+        FileInputStream fileInputStream = null;
+        try {
+            fileInputStream = new FileInputStream( data );
+            createServerChain( fileInputStream );
+        } catch ( Exception e ) {
+            throw new RuntimeException( e );
+        } finally {
+            if ( fileInputStream != null )
+                try {
+                    fileInputStream.close();
+                } catch ( IOException e ) {
+                }
+        }
+    }
+
+    private void createServerChain( InputStream data ) {
         log = LogFactory.getLog(ConfigParser.class);
         try {
-            LinkedList serverContainer = createServerList(data);
+            LinkedList<?> serverContainer = createServerList(data);
             if (log.isDebugEnabled()) {
                 debugServers(serverContainer); 
             }
@@ -66,7 +104,6 @@ public class ConfigParser {
             throw new RuntimeException(e);
         }
     }
-
     /**
      * Returns the parsed server chain.
      * 
@@ -81,7 +118,7 @@ public class ConfigParser {
      * 
      * @return The rules all put into a rule chain
      */
-    private LinkedList createServerList(File data) throws Exception {
+    private LinkedList<?> createServerList(InputStream data) throws Exception {
         Digester digester = new Digester();
         digester.setUseContextClassLoader(true);
 
@@ -133,7 +170,7 @@ public class ConfigParser {
         // Add server to list
         digester.addSetNext("config/cluster-server", "add");
 
-        return (LinkedList) digester.parse(data);
+        return (LinkedList<?>) digester.parse(data);
     }
 
     /**
@@ -142,8 +179,8 @@ public class ConfigParser {
      * 
      * @param servers The server to debug
      */
-    private void debugServers(LinkedList servers) {
-        Iterator itr = servers.iterator();
+    private void debugServers(LinkedList<?> servers) {
+        Iterator<?> itr = servers.iterator();
         
         while (itr.hasNext()) {
             ServerContainer container = (ServerContainer) itr.next();
