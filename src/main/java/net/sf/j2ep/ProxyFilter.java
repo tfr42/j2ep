@@ -91,7 +91,11 @@ public class ProxyFilter implements Filter {
             filterChain.doFilter(request, response);
         } else {
             String uri = server.getRule().process(getURI(httpRequest));
-            String url = request.getScheme() + "://" + server.getDomainName() + server.getPath() + uri;
+            String scheme = server.getScheme();
+            if (scheme == null) {
+                scheme = request.getScheme();
+            }
+            String url = scheme + "://" + server.getDomainName() + server.getPath() + uri;
             log.debug("Connecting to " + url);
             
             ResponseHandler responseHandler = null;
