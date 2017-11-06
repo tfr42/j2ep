@@ -62,6 +62,12 @@ public interface Server {
     void setConnectionExceptionRecieved(Exception e);
     
     /**
+     * Returns the scheme (ie. protocol) for this server or null if the original scheme from the request should be used.
+     * @return The scheme ("http" or "https") or null for any scheme
+     */
+    String getScheme();
+
+    /**
      * Returns the host name and port for this server.
      * @return Host name and port
      */

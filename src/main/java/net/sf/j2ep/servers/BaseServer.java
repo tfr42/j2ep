@@ -43,6 +43,11 @@ public class BaseServer extends ServerContainerBase implements Server {
     private boolean isRewriting;
     
     /**
+     * The scheme for this server
+     */
+    private String scheme;
+
+    /**
      * The host and port for this server
      */
     private String domainName;
@@ -85,6 +90,13 @@ public class BaseServer extends ServerContainerBase implements Server {
     }
     
     /**
+     * @see net.sf.j2ep.model.Server#getScheme()
+     */
+    public String getScheme() {
+        return scheme;
+    }
+
+    /**
      * @see net.sf.j2ep.model.Server#getDomainName()
      */
     public String getDomainName() {
@@ -122,6 +134,15 @@ public class BaseServer extends ServerContainerBase implements Server {
         }
     }   
     
+    /**
+     * Sets the scheme.
+     *
+     * @param scheme The scheme
+     */
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
+    }
+
     /**
      * Sets the host and port we are mapping to.
      * 

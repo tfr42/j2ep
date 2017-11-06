@@ -273,6 +273,13 @@ public abstract class ClusterContainer extends ServerContainerBase implements Se
         }
 
         /**
+         * @see net.sf.j2ep.model.Server#getScheme()
+         */
+        public String getScheme() {
+            return null;
+        }
+
+        /**
          * @see net.sf.j2ep.model.Server#getDomainName()
          */
         public String getDomainName() {
