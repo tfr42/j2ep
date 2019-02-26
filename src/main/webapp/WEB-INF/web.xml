@@ -14,8 +14,8 @@
         <filter-name>Proxy</filter-name>
         <filter-class>net.sf.j2ep.ProxyFilter</filter-class>
         <init-param>
-        	<param-name>dataUrl</param-name>
-        	<param-value>/WEB-INF/config/data.xml</param-value>
+        	<param-name>proxyConfigEnv</param-name>
+        	<param-value>PROXY_CONFIG</param-value>
         </init-param>
     </filter>
 
